@@ -1,2 +1,2 @@
-# hackatonMIctlan
+# hackatonMictlan
  Proyecto del hackathon

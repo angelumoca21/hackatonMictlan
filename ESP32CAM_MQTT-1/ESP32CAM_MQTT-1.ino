@@ -1,15 +1,17 @@
 /*
- * Proyecto Capstone: Recolección de agua pluvial .....
- * por: Angel Morales
- * Fecha: 04 de enero de 2023
- *  
- * Componente     PinESP32CAM     Estados lógicos
- * ledStatus------GPIO 33---------On=>LOW, Off=>HIGH
- */
+   Proyecto Capstone: Recolección de agua pluvial .....
+   por: Angel Morales
+   Fecha: 04 de enero de 2023
+
+   Componente     PinESP32CAM     Estados lógicos
+   ledStatus------GPIO 33---------On=>LOW, Off=>HIGH
+*/
 
 //Bibliotecas
 #include <WiFi.h>  // Biblioteca para el control de WiFi
 #include <PubSubClient.h> //Biblioteca para conexion MQTT
+
+#define SNIVEL1 12
 
 //Datos de WiFi
 const char* ssid = "QWERTY_IoT";  // Aquí debes poner el nombre de tu red
@@ -27,12 +29,13 @@ PubSubClient client(espClient); // Este objeto maneja los datos de conexion al b
 int statusLedPin = 33;
 long timeNow, timeLast; // Variables de control de tiempo no bloqueante
 int wait = 5000;  // Indica la espera cada 5 segundos para envío de mensajes MQTT
-char dataString[8] = "Hola";
+int edoSensorNivel1 = 0;
 // Inicialización del programa
 void setup()
 {
   // Iniciar comunicación serial
   Serial.begin (115200);
+  pinMode (SNIVEL1, INPUT);
   pinMode (statusLedPin, OUTPUT);
   digitalWrite (statusLedPin, HIGH);
   Serial.println();
@@ -41,8 +44,8 @@ void setup()
 
   WiFi.begin(ssid, password); // Esta es la función que realiz la conexión a WiFi
 
-  while (WiFi.status() != WL_CONNECTED) 
-  { 
+  while (WiFi.status() != WL_CONNECTED)
+  {
     // Este bucle espera a que se realice la conexión
     digitalWrite (statusLedPin, HIGH);
     delay(500); //dado que es de suma importancia esperar a la conexión, debe usarse espera bloqueante
@@ -56,7 +59,7 @@ void setup()
   Serial.println("Direccion IP: ");
   Serial.println(WiFi.localIP());
   // Si se logro la conexión, encender led
-  if (WiFi.status () > 0) 
+  if (WiFi.status () > 0)
   {
     digitalWrite (statusLedPin, LOW);
   }
@@ -69,7 +72,7 @@ void setup()
 }// fin del void setup ()
 
 // Cuerpo del programa, bucle principal
-void loop() 
+void loop()
 {
   //Verificar siempre que haya conexión al broker
   if (!client.connected())
@@ -81,22 +84,26 @@ void loop()
   if (timeNow - timeLast > wait)
   { // Manda un mensaje por MQTT cada cinco segundos
     timeLast = timeNow; // Actualización de seguimiento de tiempo
-    client.publish("codigoIoT/ejemplos/MQTT", dataString); // Esta es la función que envía los datos por MQTT, especifica el tema y el valor
+    edoSensorNivel1 = digitalRead(SNIVEL1);
+    char dataString[3];// Define una arreglo de caracteres para enviarlos por MQTT, especifica la longitud del mensaje en 8 caracteres
+    dtostrf(edoSensorNivel1, 1, 0, dataString);
+    client.publish("casaMaqueta/cisterna/s1", dataString);
+    //client.publish("codigoIoT/ejemplos/MQTT", dataString); // Esta es la función que envía los datos por MQTT, especifica el tema y el valor
   }// fin del if (timeNow - timeLast > wait)
 }// fin del void loop ()
 
 // Funciones de usuario
 
 // Esta función permite tomar acciones en caso de que se reciba un mensaje correspondiente a un tema al cual se hará una suscripción
-void callback(char* topic, byte* message, unsigned int length) 
+void callback(char* topic, byte* message, unsigned int length)
 {
   // Indicar por serial que llegó un mensaje
   Serial.print("Llegó un mensaje en el tema: ");
   Serial.print(topic);
   // Concatenar los mensajes recibidos para conformarlos como una varialbe String
   String messageTemp; // Se declara la variable en la cual se generará el mensaje completo
-  for (int i = 0; i < length; i++) 
-  {  // Se imprime y concatena el mensaje
+  for (int i = 0; i < length; i++)
+  { // Se imprime y concatena el mensaje
     Serial.print((char)message[i]);
     messageTemp += (char)message[i];
   }
@@ -107,13 +114,13 @@ void callback(char* topic, byte* message, unsigned int length)
   // En esta parte puedes agregar las funciones que requieras para actuar segun lo necesites al recibir un mensaje MQTT
   // Ejemplo, en caso de recibir el mensaje true - false, se cambiará el estado del led soldado en la placa.
   // El ESP323CAM está suscrito al tema esp/output
-  if (String(topic) == "esp32/output") 
-  {  // En caso de recibirse mensaje en el tema esp32/output
-    if (messageTemp == "true") 
+  if (String(topic) == "esp32/output")
+  { // En caso de recibirse mensaje en el tema esp32/output
+    if (messageTemp == "true")
     {
       Serial.println("Led encendido");
     }// fin del if (String(topic) == "esp32/output")
-    else if (messageTemp == "false") 
+    else if (messageTemp == "false")
     {
       Serial.println("Led apagado");
     }// fin del else if(messageTemp == "false")
@@ -121,19 +128,20 @@ void callback(char* topic, byte* message, unsigned int length)
 }// fin del void callback
 
 // Función para reconectarse
-void reconnect() 
+void reconnect()
 {
   // Bucle hasta lograr conexión
-  while (!client.connected()) { // Pregunta si hay conexión
+  while (!client.connected())
+  { // Pregunta si hay conexión
     Serial.print("Tratando de contectarse...");
     // Intentar reconexión
-    if (client.connect("ESP32CAMClient")) 
+    if (client.connect("ESP32CAMClient"))
     { //Pregunta por el resultado del intento de conexión
       Serial.println("Conectado");
       client.subscribe("esp32/output"); // Esta función realiza la suscripción al tema
     }// fin del  if (client.connect("ESP32CAMClient"))
-    else 
-    {  //en caso de que la conexión no se logre
+    else
+    { //en caso de que la conexión no se logre
       Serial.print("Conexion fallida, Error rc=");
       Serial.print(client.state()); // Muestra el codigo de error
       Serial.println(" Volviendo a intentar en 5 segundos");

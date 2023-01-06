@@ -85,9 +85,13 @@ void loop()
   { // Manda un mensaje por MQTT cada cinco segundos
     timeLast = timeNow; // Actualización de seguimiento de tiempo
     edoSensorNivel1 = digitalRead(SNIVEL1);
-    char dataString[3];// Define una arreglo de caracteres para enviarlos por MQTT, especifica la longitud del mensaje en 8 caracteres
-    dtostrf(edoSensorNivel1, 1, 0, dataString);
-    client.publish("casaMaqueta/cisterna/s1", dataString);
+    ///////////char dataString[4];// Define una arreglo de caracteres para enviarlos por MQTT, especifica la longitud del mensaje en 8 caracteres
+    ///////////dtostrf(edoSensorNivel1, 1, 0, dataString);
+    if (edoSensorNivel1 == 0)
+      client.publish("casaMaqueta/cisterna/s1", "OFF");
+    else
+      client.publish("casaMaqueta/cisterna/s1", "ON");
+    /////////////client.publish("casaMaqueta/cisterna/s1", dataString);
     //client.publish("codigoIoT/ejemplos/MQTT", dataString); // Esta es la función que envía los datos por MQTT, especifica el tema y el valor
   }// fin del if (timeNow - timeLast > wait)
 }// fin del void loop ()
